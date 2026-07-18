@@ -6,6 +6,8 @@ import path from 'node:path';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 
+const PACKAGE_JSON = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const CONNECTOR_VERSION = PACKAGE_JSON.version || 'unknown';
 const CONFIG_DIR = path.join(os.homedir(), '.lotsteam-connector');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const DEFAULT_POLL_INTERVAL_MS = 10000;
@@ -192,7 +194,19 @@ async function api(pathname, options = {}) {
 }
 
 async function claim() {
-  return api('/api/coding/runs/claim', { body: {} });
+  return api('/api/coding/runs/claim', {
+    body: {
+      connector_version: CONNECTOR_VERSION,
+      machine: {
+        hostname: os.hostname(),
+        platform: os.platform(),
+        arch: os.arch(),
+        release: os.release(),
+        username: os.userInfo().username,
+        homedir: os.homedir(),
+      },
+    },
+  });
 }
 
 async function event(runId, event_type, message, metadata = {}, post_to_task = false) {
@@ -530,7 +544,7 @@ async function sleep(ms) {
 
 async function start({ once = false } = {}) {
   const config = getRuntimeConfig();
-  console.log(`LotsTeam Connector connected to ${config.baseUrl}`);
+  console.log(`LotsTeam Connector ${CONNECTOR_VERSION} connected to ${config.baseUrl}`);
   console.log(`Config: ${CONFIG_FILE}`);
   console.log('Keep this process running while you want coding agents online.\n');
 

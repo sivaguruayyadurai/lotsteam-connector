@@ -4,6 +4,8 @@ Connect a local machine or VPS to LotsTeam coding agents.
 
 This package lets a machine with a repo checkout run Codex or Claude Code for tasks assigned in LotsTeam.
 
+The connector reports its package version and basic machine identity, such as hostname, OS, architecture, and username, so LotsTeam can show whether a machine needs an update and help users identify which laptop or VPS is connected.
+
 ## Install / Run
 
 One-time interactive setup:
