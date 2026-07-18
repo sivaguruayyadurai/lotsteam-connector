@@ -94,6 +94,20 @@ LOTSTEAM_CLAUDE_PERMISSION_MODE=acceptEdits npx @lotstech/lotsteam-connector sta
 
 ## Publish Steps
 
+### GitHub Actions
+
+This repo includes `.github/workflows/publish.yml`.
+
+For npm trusted publishing, set the workflow filename to:
+
+```text
+publish.yml
+```
+
+Then publish by creating a GitHub release or running the workflow manually from GitHub Actions.
+
+### Manual fallback
+
 1. Log in to npm:
 
 ```bash

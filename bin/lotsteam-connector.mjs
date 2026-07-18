@@ -433,7 +433,7 @@ async function handleRun(run) {
 
   const absoluteRepoPath = path.resolve(repoPath);
   console.log(`Starting run ${run.id} in ${absoluteRepoPath}`);
-  await event(run.id, 'started', `Starting in ${absoluteRepoPath}.`, { repo_path: absoluteRepoPath }, true);
+  await event(run.id, 'started', `Starting in ${absoluteRepoPath}.`, { repo_path: absoluteRepoPath }, false);
 
   let branchName = run.branch_name;
   try {
@@ -450,7 +450,26 @@ async function handleRun(run) {
   const prompt = buildPrompt(run);
   const { command, args } = commandForProvider(run, prompt);
   console.log(`Invoking ${command} for run ${run.id}`);
-  await event(run.id, 'progress', `Invoking ${command}.`, { command, args_preview: args.slice(0, 2) }, true);
+  await event(run.id, 'progress', `Invoking ${command}.`, { command, args_preview: args.slice(0, 2) }, false);
+  await event(
+    run.id,
+    'progress',
+    [
+      'Coding agent started.',
+      `Branch: \`${branchName}\`.`,
+      `Machine: ${run.runner?.display_name || 'connected machine'}.`,
+      `Provider: ${run.provider === 'claude_code' ? 'Claude Code' : run.provider === 'codex' ? 'Codex' : run.provider}.`,
+      `Folder: \`${absoluteRepoPath}\`.`,
+    ].join('\n'),
+    {
+      branch_name: branchName,
+      repo_path: absoluteRepoPath,
+      command,
+      provider: run.provider,
+      runner_id: run.runner_id || null,
+    },
+    true
+  );
 
   const verbose = process.env.LOTSTEAM_CONNECTOR_VERBOSE === '1';
   let lastOutputEvent = 0;

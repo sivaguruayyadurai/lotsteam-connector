@@ -1,6 +1,6 @@
 {
   "name": "@lotstech/lotsteam-connector",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Connect a local machine or VPS to LotsTeam coding agents.",
   "type": "module",
   "bin": {
