@@ -1,0 +1,35 @@
+{
+  "name": "@lotstech/lotsteam-connector",
+  "version": "0.1.12",
+  "description": "Connect a local machine or VPS to LotsTeam coding agents.",
+  "type": "module",
+  "bin": {
+    "lotsteam-connector": "bin/lotsteam-connector.mjs"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "node --check bin/lotsteam-connector.mjs",
+    "start": "node bin/lotsteam-connector.mjs start",
+    "once": "node bin/lotsteam-connector.mjs once",
+    "status": "node bin/lotsteam-connector.mjs status"
+  },
+  "keywords": [
+    "lotsteam",
+    "codex",
+    "claude",
+    "ai-agents",
+    "coding-agent"
+  ],
+  "author": "LotsTech",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
