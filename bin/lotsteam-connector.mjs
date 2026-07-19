@@ -85,6 +85,34 @@ function expandHomePath(repoPath) {
   return repoPath;
 }
 
+function repositoryFolderNames(repository = {}) {
+  const names = new Set();
+  for (const value of [repository.repo_full_name, repository.repo_url]) {
+    if (!value || typeof value !== 'string') continue;
+    const folderName = value.replace(/\.git$/, '').split('/').filter(Boolean).pop();
+    if (folderName) names.add(folderName);
+  }
+  return [...names];
+}
+
+function resolvePathCandidate(configuredPath, repository) {
+  if (!configuredPath) return null;
+  const resolvedPath = path.resolve(expandHomePath(configuredPath));
+  const folderNames = repositoryFolderNames(repository);
+
+  if (folderNames.includes(path.basename(resolvedPath)) && existsSync(resolvedPath)) {
+    return resolvedPath;
+  }
+
+  for (const folderName of folderNames) {
+    const nestedPath = path.join(resolvedPath, folderName);
+    if (existsSync(nestedPath)) return nestedPath;
+  }
+
+  if (existsSync(resolvedPath)) return resolvedPath;
+  return null;
+}
+
 function getRuntimeConfig() {
   const saved = readConfig();
   return {
@@ -334,19 +362,19 @@ function resolveRepoPath(run) {
 
   for (const key of keys) {
     if (config.repoMap[key]) {
-      const mappedPath = path.resolve(expandHomePath(config.repoMap[key]));
-      if (existsSync(mappedPath)) return mappedPath;
+      const mappedPath = resolvePathCandidate(config.repoMap[key], repository);
+      if (mappedPath) return mappedPath;
     }
   }
 
   if (repository.provider === 'local' && repository.metadata?.local_path) {
-    const projectPath = path.resolve(expandHomePath(repository.metadata.local_path));
-    if (existsSync(projectPath)) return projectPath;
+    const projectPath = resolvePathCandidate(repository.metadata.local_path, repository);
+    if (projectPath) return projectPath;
   }
 
   if (config.repoMap.default) {
-    const defaultPath = path.resolve(expandHomePath(config.repoMap.default));
-    if (existsSync(defaultPath)) return defaultPath;
+    const defaultPath = resolvePathCandidate(config.repoMap.default, repository);
+    if (defaultPath) return defaultPath;
   }
 
   return null;
