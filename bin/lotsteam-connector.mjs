@@ -195,18 +195,30 @@ async function api(pathname, options = {}) {
 
 async function claim() {
   return api('/api/coding/runs/claim', {
-    body: {
-      connector_version: CONNECTOR_VERSION,
-      machine: {
-        hostname: os.hostname(),
-        platform: os.platform(),
-        arch: os.arch(),
-        release: os.release(),
-        username: os.userInfo().username,
-        homedir: os.homedir(),
-      },
-    },
+    body: connectorIdentityPayload(),
   });
+}
+
+async function heartbeat() {
+  return api('/api/coding/runner/heartbeat', {
+    body: connectorIdentityPayload(),
+  }).catch((error) => {
+    console.error(`[heartbeat] ${error.message}`);
+  });
+}
+
+function connectorIdentityPayload() {
+  return {
+    connector_version: CONNECTOR_VERSION,
+    machine: {
+      hostname: os.hostname(),
+      platform: os.platform(),
+      arch: os.arch(),
+      release: os.release(),
+      username: os.userInfo().username,
+      homedir: os.homedir(),
+    },
+  };
 }
 
 async function event(runId, event_type, message, metadata = {}, post_to_task = false) {
@@ -377,7 +389,11 @@ function commandForProvider(run, prompt) {
   }
 
   if (run.provider === 'claude_code') {
-    return { command: 'claude', args: [...claudeAutomationArgs(), '-p', prompt] };
+    const resumeSessionId = run.metadata?.resume_session_id || run.external_session_id;
+    const args = resumeSessionId
+      ? ['-p', '--resume', String(resumeSessionId), ...claudeAutomationArgs(), '--output-format', 'json', prompt]
+      : ['-p', '--session-id', run.id, ...claudeAutomationArgs(), '--output-format', 'json', prompt];
+    return { command: 'claude', args };
   }
 
   const resumeSessionId = run.metadata?.resume_session_id || run.external_session_id;
@@ -432,6 +448,20 @@ async function summarizeRepo(repoPath) {
 function extractCodexSessionId(text) {
   const match = text.match(/session id:\s*([0-9a-fA-F-]{32,36})/);
   return match?.[1] || null;
+}
+
+function parseClaudeResult(stdout) {
+  const trimmed = stdout.trim();
+  if (!trimmed) return {};
+  try {
+    const parsed = JSON.parse(trimmed);
+    return {
+      text: typeof parsed.result === 'string' ? parsed.result : trimmed,
+      sessionId: typeof parsed.session_id === 'string' ? parsed.session_id : null,
+    };
+  } catch {
+    return { text: trimmed, sessionId: null };
+  }
 }
 
 async function handleRun(run) {
@@ -491,6 +521,7 @@ async function handleRun(run) {
     const trimmed = text.trim();
     if (stream === 'status' && trimmed) {
       console.log(`[${run.id}] ${trimmed}`);
+      heartbeat();
     } else if (verbose && trimmed) {
       console.log(`[${run.id}] ${stream}: ${trimmed.slice(-2000)}`);
     } else if (stream === 'stderr' && isQuietDiagnostic(trimmed)) {
@@ -505,9 +536,10 @@ async function handleRun(run) {
   });
 
   const repoSummary = await summarizeRepo(absoluteRepoPath);
-  const externalSessionId = run.external_session_id || extractCodexSessionId(`${result.stderr}\n${result.stdout}`);
+  const claudeResult = run.provider === 'claude_code' ? parseClaudeResult(result.stdout) : {};
+  const externalSessionId = run.external_session_id || claudeResult.sessionId || extractCodexSessionId(`${result.stderr}\n${result.stdout}`);
   console.log(`Finished run ${run.id} with exit code ${result.code}`);
-  const agentAnswer = (result.stdout.trim() || result.stderr.trim()).slice(-12000);
+  const agentAnswer = ((claudeResult.text || result.stdout.trim()) || result.stderr.trim()).slice(-12000);
   const connectorSummary = [
     result.code === 0 ? 'Connector check:' : `Connector check: coding agent exited with code ${result.code}.`,
     repoSummary.changed_files.length ? `Changed files:\n${repoSummary.changed_files.map((file) => `- ${file}`).join('\n')}` : 'No changed files detected.',
