@@ -97,6 +97,27 @@ function getRuntimeConfig() {
   };
 }
 
+function persistEnvConfigIfPresent() {
+  if (!process.env.LOTSTEAM_RUNNER_TOKEN && !process.env.LOTSTEAM_BASE_URL && !process.env.LOTSTEAM_REPO_MAP) return;
+
+  const current = readConfig();
+  const config = getRuntimeConfig();
+  if (!config.token) return;
+
+  writeConfig({
+    ...current,
+    baseUrl: config.baseUrl.replace(/\/+$/, ''),
+    token: config.token,
+    repoMap: {
+      ...(current.repoMap || {}),
+      ...config.repoMap,
+    },
+    pollIntervalMs: config.pollIntervalMs,
+    agentTimeoutMs: config.agentTimeoutMs,
+    transcriptLimitBytes: config.transcriptLimitBytes,
+  });
+}
+
 function appendBounded(current, next, limitBytes) {
   const combined = `${current}${next}`;
   if (!limitBytes || limitBytes < 1) return combined;
@@ -208,8 +229,13 @@ async function heartbeat() {
 }
 
 function connectorIdentityPayload() {
+  const config = getRuntimeConfig();
+  const defaultRepoPath = config.repoMap.default ? path.resolve(expandHomePath(config.repoMap.default)) : null;
+
   return {
     connector_version: CONNECTOR_VERSION,
+    default_repo_path: defaultRepoPath,
+    repo_map_keys: Object.keys(config.repoMap),
     machine: {
       hostname: os.hostname(),
       platform: os.platform(),
@@ -579,6 +605,7 @@ async function sleep(ms) {
 }
 
 async function start({ once = false } = {}) {
+  persistEnvConfigIfPresent();
   const config = getRuntimeConfig();
   console.log(`LotsTeam Connector ${CONNECTOR_VERSION} connected to ${config.baseUrl}`);
   console.log(`Config: ${CONFIG_FILE}`);
