@@ -333,15 +333,20 @@ function resolveRepoPath(run) {
   const keys = [repository.id, repository.repo_full_name, repository.repo_url].filter(Boolean);
 
   for (const key of keys) {
-    if (config.repoMap[key]) return path.resolve(expandHomePath(config.repoMap[key]));
+    if (config.repoMap[key]) {
+      const mappedPath = path.resolve(expandHomePath(config.repoMap[key]));
+      if (existsSync(mappedPath)) return mappedPath;
+    }
   }
 
   if (repository.provider === 'local' && repository.metadata?.local_path) {
-    return path.resolve(expandHomePath(repository.metadata.local_path));
+    const projectPath = path.resolve(expandHomePath(repository.metadata.local_path));
+    if (existsSync(projectPath)) return projectPath;
   }
 
   if (config.repoMap.default) {
-    return path.resolve(expandHomePath(config.repoMap.default));
+    const defaultPath = path.resolve(expandHomePath(config.repoMap.default));
+    if (existsSync(defaultPath)) return defaultPath;
   }
 
   return null;
