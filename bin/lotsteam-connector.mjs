@@ -314,6 +314,10 @@ function resolveRepoPath(run) {
     return path.resolve(expandHomePath(repository.metadata.local_path));
   }
 
+  if (config.repoMap.default) {
+    return path.resolve(expandHomePath(config.repoMap.default));
+  }
+
   return null;
 }
 
@@ -327,7 +331,7 @@ function buildPrompt(run) {
     task.description ? `Description:\n${task.description}` : null,
     run.prompt ? `Additional instructions:\n${run.prompt}` : null,
     '',
-    `Repository: ${repository.repo_full_name || repository.repo_url || run.repository_id}`,
+    `Repository: ${repository.repo_full_name || repository.repo_url || run.repository_id || 'machine default folder'}`,
     `Base branch: ${run.base_branch}`,
     `Working branch: ${run.branch_name}`,
     '',
